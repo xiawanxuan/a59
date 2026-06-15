@@ -1,6 +1,14 @@
 import React from 'react';
-import { Download, RotateCcw, Sun, Moon, CircleDot } from 'lucide-react';
+import {
+  Download,
+  GitCompare,
+  RotateCcw,
+  Sun,
+  Moon,
+  CircleDot,
+} from 'lucide-react';
 import { useOrbitalControl } from '@/hooks/useOrbitalControl';
+import { useDensityDiffControl } from '@/hooks/useDensityDiffControl';
 import { useMoleculeStore } from '@/stores/useMoleculeStore';
 import { exportViewConfig } from '@/utils/exportConfig';
 import eventBus from '@/bus/EventBus';
@@ -9,6 +17,7 @@ export const Toolbar: React.FC = () => {
   const { isovalue, updateIsovalue, showPositivePhase, showNegativePhase, togglePhase } =
     useOrbitalControl();
   const { molecule, getConfig, reset } = useMoleculeStore();
+  const diffCtrl = useDensityDiffControl();
 
   const handleExport = () => {
     if (!molecule) return;
@@ -77,6 +86,38 @@ export const Toolbar: React.FC = () => {
           <Moon size={12} />
           负
         </button>
+      </div>
+
+      <div className="h-8 w-px bg-slate-700/60" />
+
+      <div className="flex items-center gap-3">
+        <button
+          onClick={diffCtrl.cycleMode}
+          disabled={!diffCtrl.reactantMolecule || !diffCtrl.productMolecule}
+          className={`px-3 py-1 text-xs rounded flex items-center gap-1.5 border transition-all ${
+            diffCtrl.isActive
+              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+              : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-750'
+          } disabled:opacity-40 disabled:cursor-not-allowed`}
+        >
+          <GitCompare size={12} />
+          差值 · {diffCtrl.mode === 'off' ? '关' : diffCtrl.mode === 'orbital' ? '轨道' : '总密度'}
+        </button>
+        <div className="flex items-center gap-2 text-[10px]">
+          <span className="flex items-center gap-1 text-slate-400">
+            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-500" />
+            得电子
+          </span>
+          <span className="flex items-center gap-1 text-slate-400">
+            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-red-500" />
+            失电子
+          </span>
+          {diffCtrl.stats && (
+            <span className="text-slate-500 font-mono ml-2">
+              Δq={diffCtrl.stats.netTransfer.toFixed(2)}e
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="flex-1" />

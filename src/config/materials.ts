@@ -67,6 +67,12 @@ export const PHASE_COLORS = {
 
 export const HIGHLIGHT_COLOR = new THREE.Color(0xfacc15);
 
+export const DIFF_COLORS = {
+  gain: new THREE.Color(0x22c55e),
+  loss: new THREE.Color(0xef4444),
+  neutral: new THREE.Color(0x94a3b8),
+};
+
 export const orbitalMaterialPositive = new THREE.MeshPhysicalMaterial({
   color: PHASE_COLORS.positive,
   transparent: true,
@@ -122,3 +128,25 @@ export function getElementRadius(element: string): number {
 export const ISOSURFACE_GRID_RESOLUTION = 0.25;
 export const ISOSURFACE_GRID_PADDING = 2.5;
 export const DEFAULT_ISOVALUE = 0.02;
+
+export const arrowMaterialGain = new THREE.MeshStandardMaterial({
+  color: DIFF_COLORS.gain,
+  emissive: DIFF_COLORS.gain,
+  emissiveIntensity: 0.25,
+  roughness: 0.35,
+  metalness: 0.35,
+});
+
+export const arrowMaterialLoss = new THREE.MeshStandardMaterial({
+  color: DIFF_COLORS.loss,
+  emissive: DIFF_COLORS.loss,
+  emissiveIntensity: 0.25,
+  roughness: 0.35,
+  metalness: 0.35,
+});
+
+export const arrowLineMaterial = new THREE.LineBasicMaterial({
+  color: 0xe2e8f0,
+  transparent: true,
+  opacity: 0.4,
+});

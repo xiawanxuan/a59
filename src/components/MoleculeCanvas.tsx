@@ -6,15 +6,25 @@ import * as THREE from 'three';
 import { useMoleculeStore } from '@/stores/useMoleculeStore';
 import { MoleculeRenderer } from '@/core/MoleculeRenderer';
 import { OrbitalRenderer } from '@/core/OrbitalRenderer';
+import { ArrowRenderer } from '@/core/ArrowRenderer';
+import { DensityDiffEngine } from '@/core/DensityDiffEngine';
 import eventBus from '@/bus/EventBus';
 
 interface SceneProps {
   molRenderRef: React.MutableRefObject<MoleculeRenderer | null>;
   orbRenderRef: React.MutableRefObject<OrbitalRenderer | null>;
   orbitalsGroupRef: React.MutableRefObject<THREE.Group | null>;
+  arrowsGroupRef: React.MutableRefObject<THREE.Group | null>;
+  arrowRenderRef: React.MutableRefObject<ArrowRenderer | null>;
 }
 
-const SceneInner: React.FC<SceneProps> = ({ molRenderRef, orbRenderRef, orbitalsGroupRef }) => {
+const SceneInner: React.FC<SceneProps> = ({
+  molRenderRef,
+  orbRenderRef,
+  orbitalsGroupRef,
+  arrowsGroupRef,
+  arrowRenderRef,
+}) => {
   const { camera } = useThree();
   const controlsRef = useRef<any>(null);
 
@@ -28,9 +38,15 @@ const SceneInner: React.FC<SceneProps> = ({ molRenderRef, orbRenderRef, orbitals
     hiddenElements,
     highlightedAtomIndices,
     setCamera,
+    reactantMolecule,
+    productMolecule,
+    densityDiffConfig,
+    densityDiffResult,
+    setDensityDiffResult,
   } = useMoleculeStore();
 
   const moleculeGroupRef = useRef<THREE.Group>(new THREE.Group());
+  const computeToken = useRef(0);
 
   useEffect(() => {
     if (!molecule) return;
@@ -53,9 +69,14 @@ const SceneInner: React.FC<SceneProps> = ({ molRenderRef, orbRenderRef, orbitals
       controlsRef.current.target.set(0, 0, 0);
       controlsRef.current.update();
     }
+    const arrowRender = new ArrowRenderer();
+    arrowRenderRef.current = arrowRender;
+    arrowsGroupRef.current = arrowRender.getGroup();
+
     return () => {
       molRender.dispose();
       orbRender.clearCache();
+      arrowRender.dispose();
     };
   }, [molecule, camera]);
 
@@ -104,6 +125,56 @@ const SceneInner: React.FC<SceneProps> = ({ molRenderRef, orbRenderRef, orbitals
     molRenderRef.current?.highlightAtoms(highlightedAtomIndices);
   }, [highlightedAtomIndices]);
 
+  const arrowRenderKey = useMemo(
+    () =>
+      `${densityDiffConfig.mode}_${reactantMolecule?.atoms.length ?? 0}_${
+        productMolecule?.atoms.length ?? 0
+      }_${selectedOrbitalIndex}_${densityDiffConfig.arrowScale.toFixed(
+        2
+      )}_${densityDiffConfig.minMagnitude.toFixed(3)}_${densityDiffConfig.showGain ? 1 : 0}_${
+        densityDiffConfig.showLoss ? 1 : 0
+      }_${densityDiffResult?.arrows.length ?? 0}`,
+    [
+      densityDiffConfig,
+      reactantMolecule,
+      productMolecule,
+      selectedOrbitalIndex,
+      densityDiffResult,
+    ]
+  );
+
+  useEffect(() => {
+    if (densityDiffConfig.mode === 'off' || !reactantMolecule || !productMolecule) {
+      if (arrowRenderRef.current) arrowRenderRef.current.clear();
+      return;
+    }
+    const tk = ++computeToken.current;
+    queueMicrotask(() => {
+      if (tk !== computeToken.current) return;
+      let result = densityDiffResult;
+      if (!result) {
+        const effectiveMode = densityDiffConfig.mode === 'off' ? 'orbital' : densityDiffConfig.mode;
+        result = DensityDiffEngine.compute(
+          reactantMolecule,
+          productMolecule,
+          selectedOrbitalIndex,
+          { ...densityDiffConfig, mode: effectiveMode }
+        );
+        if (tk === computeToken.current) setDensityDiffResult(result);
+      }
+      if (tk === computeToken.current && arrowRenderRef.current && result) {
+        arrowRenderRef.current.render(result, densityDiffConfig);
+      }
+    });
+  }, [
+    densityDiffConfig,
+    reactantMolecule,
+    productMolecule,
+    selectedOrbitalIndex,
+    densityDiffResult,
+    setDensityDiffResult,
+  ]);
+
   useFrame(() => {
     if (controlsRef.current) {
       const pos = controlsRef.current.object.position;
@@ -123,6 +194,7 @@ const SceneInner: React.FC<SceneProps> = ({ molRenderRef, orbRenderRef, orbitals
 
       <primitive object={moleculeGroupRef.current} />
       <primitive key={orbitalRenderKey} object={orbitalsGroupRef.current ?? new THREE.Group()} />
+      <primitive key={arrowRenderKey} object={arrowsGroupRef.current ?? new THREE.Group()} />
 
       <OrbitControls
         ref={controlsRef}
@@ -145,6 +217,8 @@ export const MoleculeCanvas: React.FC = () => {
   const molRenderRef = useRef<MoleculeRenderer | null>(null);
   const orbRenderRef = useRef<OrbitalRenderer | null>(null);
   const orbitalsGroupRef = useRef<THREE.Group | null>(new THREE.Group());
+  const arrowsGroupRef = useRef<THREE.Group | null>(new THREE.Group());
+  const arrowRenderRef = useRef<ArrowRenderer | null>(null);
   const molecule = useMoleculeStore((s) => s.molecule);
 
   return (
@@ -159,6 +233,8 @@ export const MoleculeCanvas: React.FC = () => {
           molRenderRef={molRenderRef}
           orbRenderRef={orbRenderRef}
           orbitalsGroupRef={orbitalsGroupRef}
+          arrowsGroupRef={arrowsGroupRef}
+          arrowRenderRef={arrowRenderRef}
         />
       </Canvas>
 
