@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, memo } from 'react';
+import React, { useRef, useEffect, useMemo, memo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Environment } from '@react-three/drei';
 import { EffectComposer, Bloom, FXAA } from '@react-three/postprocessing';
@@ -59,9 +59,25 @@ const SceneInner: React.FC<SceneProps> = ({ molRenderRef, orbRenderRef, orbitals
     };
   }, [molecule, camera]);
 
+  const orbitalRenderKey = useMemo(
+    () => `${molecule?.atoms.length ?? 0}_${selectedOrbitalIndex}_${isovalue.toFixed(4)}_${showPositivePhase ? 1 : 0}_${showNegativePhase ? 1 : 0}`,
+    [molecule, selectedOrbitalIndex, isovalue, showPositivePhase, showNegativePhase]
+  );
+
+  useEffect(() => {
+    if (!orbitalsGroupRef.current) return;
+    const prevGroup = orbitalsGroupRef.current;
+    while (prevGroup.children.length > 0) {
+      const child = prevGroup.children[0];
+      prevGroup.remove(child);
+    }
+    prevGroup.clear();
+    orbitalsGroupRef.current = new THREE.Group();
+    orbitalsGroupRef.current.name = 'orbitals-root';
+  }, [orbitalRenderKey]);
+
   useEffect(() => {
     if (!molecule || selectedOrbitalIndex < 0 || !orbRenderRef.current) return;
-    if (orbitalsGroupRef.current) orbitalsGroupRef.current.clear();
     const group = orbRenderRef.current.renderOrbital(
       selectedOrbitalIndex,
       isovalue,
@@ -106,7 +122,7 @@ const SceneInner: React.FC<SceneProps> = ({ molRenderRef, orbRenderRef, orbitals
       <directionalLight position={[-5, -3, -5]} intensity={0.35} color="#8899ff" />
 
       <primitive object={moleculeGroupRef.current} />
-      <primitive object={orbitalsGroupRef.current ?? new THREE.Group()} />
+      <primitive key={orbitalRenderKey} object={orbitalsGroupRef.current ?? new THREE.Group()} />
 
       <OrbitControls
         ref={controlsRef}

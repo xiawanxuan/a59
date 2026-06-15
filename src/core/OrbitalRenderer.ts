@@ -109,8 +109,18 @@ export class OrbitalRenderer {
     const cacheKey = `${orbitalIndex}_${isovalue.toFixed(4)}`;
     if (this.meshCache.has(cacheKey)) {
       const cached = this.meshCache.get(cacheKey)!;
-      if (showPositive) group.add(cached.pos);
-      if (showNegative) group.add(cached.neg);
+      if (cached.pos.parent) cached.pos.parent.remove(cached.pos);
+      if (cached.neg.parent) cached.neg.parent.remove(cached.neg);
+      cached.pos.visible = showPositive;
+      cached.neg.visible = showNegative;
+      (cached.pos.material as THREE.Material).needsUpdate = true;
+      (cached.neg.material as THREE.Material).needsUpdate = true;
+      cached.pos.geometry.attributes.position.needsUpdate = true;
+      cached.neg.geometry.attributes.position.needsUpdate = true;
+      cached.pos.matrixWorldNeedsUpdate = true;
+      cached.neg.matrixWorldNeedsUpdate = true;
+      group.add(cached.pos);
+      group.add(cached.neg);
       return group;
     }
 
@@ -138,10 +148,12 @@ export class OrbitalRenderer {
     negMesh.name = 'orbital_negative';
     negMesh.visible = showNegative;
 
+    posMesh.visible = showPositive;
+    negMesh.visible = showNegative;
     this.meshCache.set(cacheKey, { pos: posMesh, neg: negMesh });
 
-    if (showPositive) group.add(posMesh);
-    if (showNegative) group.add(negMesh);
+    group.add(posMesh);
+    group.add(negMesh);
 
     return group;
   }
