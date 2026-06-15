@@ -1,0 +1,139 @@
+import { create } from 'zustand';
+import type { CameraState, Molecule, ViewConfig, Vec3 } from '@/types';
+import { DEFAULT_ISOVALUE } from '@/config/materials';
+
+interface MoleculeState {
+  molecule: Molecule | null;
+  rawLog: string;
+  selectedOrbitalIndex: number;
+  isovalue: number;
+  showPositivePhase: boolean;
+  showNegativePhase: boolean;
+  hiddenAtomIndices: number[];
+  hiddenElements: string[];
+  highlightedAtomIndices: number[];
+  camera: CameraState;
+  isLoading: boolean;
+  parseProgress: number;
+
+  setMolecule: (mol: Molecule, raw: string) => void;
+  setOrbital: (index: number) => void;
+  setIsovalue: (v: number) => void;
+  setPhaseVisibility: (positive: boolean, negative: boolean) => void;
+  hideAtom: (index: number) => void;
+  showAtom: (index: number) => void;
+  toggleElement: (element: string) => void;
+  setHighlightedAtoms: (indices: number[]) => void;
+  setCamera: (pos: Vec3, target: Vec3) => void;
+  setLoading: (loading: boolean) => void;
+  setProgress: (p: number) => void;
+  importConfig: (config: ViewConfig) => void;
+  getConfig: () => ViewConfig;
+  reset: () => void;
+}
+
+const defaultCamera: CameraState = {
+  position: { x: 0, y: 0, z: 10 },
+  target: { x: 0, y: 0, z: 0 },
+};
+
+export const useMoleculeStore = create<MoleculeState>((set, get) => ({
+  molecule: null,
+  rawLog: '',
+  selectedOrbitalIndex: -1,
+  isovalue: DEFAULT_ISOVALUE,
+  showPositivePhase: true,
+  showNegativePhase: true,
+  hiddenAtomIndices: [],
+  hiddenElements: [],
+  highlightedAtomIndices: [],
+  camera: defaultCamera,
+  isLoading: false,
+  parseProgress: 0,
+
+  setMolecule: (mol, raw) =>
+    set({
+      molecule: mol,
+      rawLog: raw,
+      selectedOrbitalIndex: mol.homoIndex >= 0 ? mol.homoIndex : 0,
+      hiddenAtomIndices: [],
+      hiddenElements: [],
+      highlightedAtomIndices: [],
+    }),
+
+  setOrbital: (index) => set({ selectedOrbitalIndex: index }),
+
+  setIsovalue: (v) => set({ isovalue: v }),
+
+  setPhaseVisibility: (positive, negative) =>
+    set({ showPositivePhase: positive, showNegativePhase: negative }),
+
+  hideAtom: (index) =>
+    set((s) => ({
+      hiddenAtomIndices: s.hiddenAtomIndices.includes(index)
+        ? s.hiddenAtomIndices
+        : [...s.hiddenAtomIndices, index],
+    })),
+
+  showAtom: (index) =>
+    set((s) => ({
+      hiddenAtomIndices: s.hiddenAtomIndices.filter((i) => i !== index),
+    })),
+
+  toggleElement: (element) =>
+    set((s) => ({
+      hiddenElements: s.hiddenElements.includes(element)
+        ? s.hiddenElements.filter((e) => e !== element)
+        : [...s.hiddenElements, element],
+    })),
+
+  setHighlightedAtoms: (indices) => set({ highlightedAtomIndices: indices }),
+
+  setCamera: (position, target) => set({ camera: { position, target } }),
+
+  setLoading: (loading) => set({ isLoading: loading }),
+
+  setProgress: (p) => set({ parseProgress: p }),
+
+  importConfig: (config) =>
+    set({
+      selectedOrbitalIndex: config.selectedOrbitalIndex,
+      isovalue: config.isovalue,
+      showPositivePhase: config.showPositivePhase,
+      showNegativePhase: config.showNegativePhase,
+      hiddenAtomIndices: config.hiddenAtomIndices,
+      hiddenElements: config.hiddenElements,
+      highlightedAtomIndices: config.highlightedAtomIndices,
+      camera: config.camera,
+    }),
+
+  getConfig: () => {
+    const s = get();
+    return {
+      camera: s.camera,
+      selectedOrbitalIndex: s.selectedOrbitalIndex,
+      isovalue: s.isovalue,
+      showPositivePhase: s.showPositivePhase,
+      showNegativePhase: s.showNegativePhase,
+      hiddenAtomIndices: s.hiddenAtomIndices,
+      hiddenElements: s.hiddenElements,
+      highlightedAtomIndices: s.highlightedAtomIndices,
+    };
+  },
+
+  reset: () =>
+    set({
+      molecule: null,
+      rawLog: '',
+      selectedOrbitalIndex: -1,
+      isovalue: DEFAULT_ISOVALUE,
+      showPositivePhase: true,
+      showNegativePhase: true,
+      hiddenAtomIndices: [],
+      hiddenElements: [],
+      highlightedAtomIndices: [],
+      camera: defaultCamera,
+      isLoading: false,
+      parseProgress: 0,
+    }),
+}));
